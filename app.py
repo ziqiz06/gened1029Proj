@@ -20,10 +20,7 @@ from visuals import cross_section, stage_canvas
 from ai import (
     cosmic_speculation,
     generate_world_identity,
-    habitability_analysis,
     result_narrative,
-    scientific_critique,
-    study_guide_text,
 )
 
 # ── Page config ───────────────────────────────────────────────────────────────
@@ -44,6 +41,8 @@ def _inject_css():
 <style>
 header[data-testid="stHeader"],[data-testid="stToolbar"],
 [data-testid="stDecoration"],.stDeployButton{display:none!important}
+/* Always show the sidebar collapse/expand toggle */
+[data-testid="stSidebarCollapsedControl"]{display:flex!important}
 
 html,body,[class*="css"]{font-family:'VT323',monospace!important;font-size:14px!important;color:#f0f0f0!important}
 .stApp{background-color:#1b1b1b!important}
@@ -136,9 +135,7 @@ tr:nth-child(even) td{background-color:#2a2a2a!important}
 # ── Style constants ───────────────────────────────────────────────────────────
 
 _NARR  = "background:#141e14;border:2px solid #3a7030;border-left:4px solid #3a7030;padding:8px 12px;font-family:'VT323',monospace;font-size:16px;color:#b8ddb8;line-height:1.45;"
-_BLUE  = "background:#1a1a2e;border:2px solid #4488cc;border-left:5px solid #4488cc;padding:8px 12px;font-family:'VT323',monospace;font-size:15px;color:#c8d8f8;line-height:1.45;"
 _AMBER = "background:#1e1e10;border:2px solid #aa9900;border-left:5px solid #aa9900;padding:8px 12px;font-family:'VT323',monospace;font-size:15px;color:#f0e8a8;line-height:1.45;"
-_RED   = "background:#2a1010;border:2px solid #cc4444;border-left:5px solid #cc4444;padding:8px 12px;font-family:'VT323',monospace;font-size:15px;color:#f8c8c8;line-height:1.45;"
 
 
 # ── Visual causal chain helper ────────────────────────────────────────────────
@@ -204,7 +201,7 @@ def _init():
     for k, v in {
         "page": "home", "journey": None, "stage": 0,
         "choices": {}, "selected_journey": None,
-        "study_guide": None, "speculation_seed": 0,
+        "speculation_seed": 0,
     }.items():
         if k not in st.session_state:
             st.session_state[k] = v
@@ -217,7 +214,7 @@ _inject_css()
 def _start(key: str):
     st.session_state.update(page="journey", journey=key, stage=0,
                              choices=dict(JOURNEY_DEFAULTS[key]),
-                             study_guide=None, speculation_seed=0)
+                             speculation_seed=0)
     st.rerun()
 
 def _goto(page: str):
@@ -250,20 +247,6 @@ def _radio(label, opts, state_key, *, widget_key):
     st.caption(opts[sel]["desc"])
     st.session_state.choices[state_key] = values[sel]
 
-
-def _choices_hint(choices: dict, stage_key: str) -> str:
-    parts = []
-    if "star_type" in choices:
-        parts.append(f"star={STAR_LABELS.get(choices['star_type'], choices['star_type'])}")
-    if "distance_au" in choices and stage_key in ("nebula", "accretion", "evolution"):
-        parts.append(f"distance={choices['distance_au']} AU")
-    if "atmosphere" in choices and stage_key == "evolution":
-        parts.append(f"atmosphere={choices['atmosphere']}")
-    if "water" in choices and stage_key == "evolution":
-        parts.append(f"water={choices['water']}")
-    if "tidal_heating" in choices and stage_key == "evolution":
-        parts.append(f"tidal_heating={choices['tidal_heating']}")
-    return ", ".join(parts)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -306,7 +289,9 @@ def show_home():
     st.markdown("### 🌍 Earth — Reference Case")
     ec1, ec2, ec3 = st.columns([1, 1, 2])
     with ec1:
-        st.markdown(cross_section(EARTH), unsafe_allow_html=True)
+        st.components.v1.html(
+            "<html><body style='margin:0;padding:0;background:#07101f'>"
+            + cross_section(EARTH) + "</body></html>", height=290)
     with ec2:
         for line in EARTH.summary_lines:
             st.write(line)
@@ -535,32 +520,6 @@ def _render_choice(stage, journey, choices) -> bool:
 # RESULT PAGE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-_COURSE_ROWS = [
-    ("Big Bang: expansion of space itself, not into space",     "Lecture 12: The Big Bang"),
-    ("Temperature controls particle formation (E = mc²)",       "Lecture 12: The Big Bang"),
-    ("Nucleosynthesis stops at He — universe expands too fast", "Lecture 2: Everything is made of atoms"),
-    ("Heavy elements forged inside stars and supernovae",       "Lecture 2: Everything is made of atoms"),
-    ("No metals → massive Pop III stars → first C, O, N",      "Lecture 2: Everything is made of atoms"),
-    ("Dark matter as gravitational scaffolding for galaxies",   "Lecture 12: The Big Bang"),
-    ("Conservation of angular momentum → protoplanetary disk",  "Lecture 7: Astrobiology"),
-    ("Frost line divides rocky inner / icy outer disk",         "Lecture 7: Astrobiology"),
-    ("Differentiation: Fe core → magnetic field → atmosphere",  "Lecture 7: Astrobiology"),
-    ("Carbon: 4 bonds, chains, rings — unique complexity",      "Lectures 13–14: Origin of Life"),
-    ("Water: solvent, heat capacity, ice floats — unique",      "Lectures 13–14: Origin of Life"),
-    ("Plate tectonics: carbon-silicate cycle, climate control", "Lecture 7: Astrobiology"),
-    ("Tidal heating on icy moons (Europa, Enceladus)",          "Lecture 7: Astrobiology"),
-    ("Gas giant shields inner planets from bombardment",        "Lecture 7: Astrobiology"),
-    ("Entropy — life as local order sustained by energy flow",  "Lecture 22: Entropy and Life"),
-    ("Darwinian evolution given variation + selection",         "Lecture 23: Evolution by natural selection"),
-]
-
-_DEEPER_ROWS = [
-    ("Detection bias",       "We find large, close-in planets most easily — the exoplanet census is skewed toward worlds nothing like Earth."),
-    ("Biosignatures",        "Methane in an atmosphere could mean life — or geology. Oxygen could mean photosynthesis — or abiotic chemistry. No signature is proof."),
-    ("Fermi paradox",        "If habitable worlds are common, where is everybody? Silence could mean life is rare, intelligence is rare, or civilizations are short-lived."),
-    ("Rare Earth hypothesis","Every factor that made Earth habitable — its size, distance, Moon, Jupiter shield, plate tectonics — may be extraordinarily improbable together."),
-]
-
 
 def show_result():
     journey = st.session_state.journey
@@ -596,11 +555,17 @@ def show_result():
                 text=f"Habitability Score: {world.habitability_score}/100")
     st.divider()
 
-    # ── SVG | Properties | AI description ─────────────────────────────────────
+    # ── Cross-Section | Properties | Description ──────────────────────────────
     col_svg, col_props, col_narr = st.columns([1, 1, 1.2])
     with col_svg:
         st.markdown("**Cross-Section**")
-        st.markdown(cross_section(world), unsafe_allow_html=True)
+        # Wrap SVG in a full HTML doc so st.components renders it correctly
+        svg_html = (
+            "<html><body style='margin:0;padding:0;background:#07101f'>"
+            + cross_section(world)
+            + "</body></html>"
+        )
+        st.components.v1.html(svg_html, height=290)
     with col_props:
         st.markdown("**Properties**")
         for line in world.summary_lines:
@@ -611,16 +576,9 @@ def show_result():
             narr = result_narrative(journey, summary, world.hab_label)
         st.markdown(f"<div style='{_NARR}'>{narr}</div>", unsafe_allow_html=True)
 
-    # ── Feature 1: K2 habitability analysis ───────────────────────────────────
+    # ── Factor Breakdown ──────────────────────────────────────────────────────
     st.divider()
-    st.markdown("### 🔬 Scientific Habitability Analysis")
-    with st.spinner("Analysing habitability…"):
-        analysis = habitability_analysis(summary, world.habitability_score,
-                                         world.hab_label, journey)
-    st.markdown(f"<div style='{_BLUE}'>{analysis}</div>", unsafe_allow_html=True)
-
-    # Score breakdown
-    st.markdown("#### Factor Breakdown")
+    st.markdown("### Factor Breakdown")
     rows_html = ""
     for label, pts, max_pts in world.score_explanation:
         pct     = int(pts / max_pts * 100) if max_pts else 0
@@ -635,14 +593,7 @@ def show_result():
         f"<table style='border-collapse:collapse;width:100%;background:#111;border:2px solid #333'>"
         f"{rows_html}</table>", unsafe_allow_html=True)
 
-    # ── Feature 5: K2 scientific critique ────────────────────────────────────
-    st.divider()
-    st.markdown("### ⚠️ Scientific Critique")
-    with st.spinner("Identifying tensions…"):
-        critique = scientific_critique(summary, world.hab_label, journey)
-    st.markdown(f"<div style='{_RED}'>{critique}</div>", unsafe_allow_html=True)
-
-    # ── Cosmic Speculation ────────────────────────────────────────────────────
+    # ── Cosmic Story ──────────────────────────────────────────────────────────
     st.divider()
     st.markdown("### 🌌 Cosmic Story")
     st.caption("K2 imagines a speculative scenario rooted in your world's real properties.")
@@ -653,82 +604,6 @@ def show_result():
     if st.button("Generate Another Story →", key="spec_btn"):
         st.session_state.speculation_seed += 1
         st.rerun()
-
-    # ── Earth comparison ──────────────────────────────────────────────────────
-    if journey not in ("gas_giant", "star_system"):
-        st.divider()
-        st.markdown("### How does your world compare to Earth?")
-        ec1, ec2 = st.columns(2)
-        with ec1:
-            st.markdown(f"**{world_name}**")
-            st.markdown(
-                f"<span style='color:{world.hab_color}'>● {world.hab_label}</span>"
-                f" — {world.habitability_score}/100", unsafe_allow_html=True)
-            for line in world.summary_lines:
-                st.write(line)
-        with ec2:
-            st.markdown("**Earth (reference)**")
-            st.markdown(
-                f"<span style='color:{EARTH.hab_color}'>● {EARTH.hab_label}</span>"
-                f" — {EARTH.habitability_score}/100", unsafe_allow_html=True)
-            for line in EARTH.summary_lines:
-                st.write(line)
-
-        diffs = []
-        if world.star_type      != EARTH.star_type:      diffs.append(f"Star type: {STAR_LABELS[world.star_type]} vs {STAR_LABELS[EARTH.star_type]}")
-        if world.atmosphere     != EARTH.atmosphere:     diffs.append(f"Atmosphere: '{world.atmosphere}' vs Earth's '{EARTH.atmosphere}'")
-        if world.water          != EARTH.water:          diffs.append(f"Water: '{world.water}' vs Earth's '{EARTH.water}'")
-        if world.magnetic_field != EARTH.magnetic_field: diffs.append(f"Magnetic field: '{world.magnetic_field}' vs Earth's '{EARTH.magnetic_field}'")
-        if world.geology        != EARTH.geology:        diffs.append(f"Geology: '{world.geology}' vs Earth's '{EARTH.geology}'")
-        if diffs:
-            st.divider()
-            st.markdown("**Key differences from Earth:**")
-            for d in diffs:
-                st.write(f"• {d}")
-
-    # ── Course connections ────────────────────────────────────────────────────
-    st.divider()
-    st.markdown("### 📚 Course Connections")
-    st.caption("How this simulation connects to what we covered in class:")
-    rows = "".join(
-        f"<tr><td style='padding:5px 10px;color:#f0e8a8;font-family:VT323,monospace;font-size:16px'>{s}</td>"
-        f"<td style='padding:5px 10px;color:#d4c870;font-family:VT323,monospace;font-size:16px'>{l}</td></tr>"
-        for s, l in _COURSE_ROWS
-    )
-    st.markdown(
-        f"<table style='border-collapse:collapse;width:100%;background:#1e1e10;border:3px solid #aa9900'>"
-        f"<tr><th style='padding:8px 10px;background:#2a2a14;color:#ffe066;font-family:\"Press Start 2P\",monospace;font-size:8px'>Simulation Element</th>"
-        f"<th style='padding:8px 10px;background:#2a2a14;color:#ffe066;font-family:\"Press Start 2P\",monospace;font-size:8px'>Course Lecture</th></tr>"
-        f"{rows}</table>", unsafe_allow_html=True)
-
-    # ── Deeper Questions ──────────────────────────────────────────────────────
-    st.divider()
-    st.markdown("### 🔭 Open Questions in Astrobiology")
-    st.caption("Beyond the simulation — what scientists are still debating:")
-    deeper_rows = "".join(
-        f"<tr><td style='padding:6px 10px;color:#88ccff;font-family:VT323,monospace;font-size:16px;font-weight:bold;white-space:nowrap'>{t}</td>"
-        f"<td style='padding:6px 10px;color:#c8ddf8;font-family:VT323,monospace;font-size:16px'>{d}</td></tr>"
-        for t, d in _DEEPER_ROWS
-    )
-    st.markdown(
-        f"<table style='border-collapse:collapse;width:100%;background:#0d1a2e;border:3px solid #3366cc'>"
-        f"<tr><th style='padding:8px 10px;background:#1a2a40;color:#88ccff;font-family:\"Press Start 2P\",monospace;font-size:8px'>Question</th>"
-        f"<th style='padding:8px 10px;background:#1a2a40;color:#88ccff;font-family:\"Press Start 2P\",monospace;font-size:8px'>What We Don't Know</th></tr>"
-        f"{deeper_rows}</table>", unsafe_allow_html=True)
-
-    # ── Feature 10: Study Guide ───────────────────────────────────────────────
-    st.divider()
-    st.markdown("### 📋 Study Guide")
-    st.caption("K2 writes a 3-paragraph academic reflection you can use in assignments.")
-    if st.button("Generate Study Guide →", key="study_btn"):
-        with st.spinner("K2 is writing your study guide…"):
-            st.session_state.study_guide = study_guide_text(
-                journey, summary, world.hab_label, world.habitability_score)
-    if st.session_state.study_guide:
-        st.markdown(
-            f"<div style='{_AMBER}'>{st.session_state.study_guide}</div>",
-            unsafe_allow_html=True)
-        st.caption("Select the text above to copy it into your assignment.")
 
     st.divider()
     if st.button("🔁 Start a New Adventure", type="primary"):

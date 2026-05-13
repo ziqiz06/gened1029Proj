@@ -1,35 +1,41 @@
-# Cosmic Planet Simulator
+# Cosmic Origins Adventure
 
-An interactive simulation that walks through the history of the universe — from the Big Bang to the formation of planets — and generates a randomized planetary system to explore which worlds could support life.
-
-Built for a general education science course covering topics including Big Bang nucleosynthesis, stellar evolution, the origin of life, and astrobiology.
+A choose-your-own-adventure science simulation covering 13.8 billion years of cosmic history — from the Big Bang to the formation of your own world. Built for a general education science course covering Big Bang nucleosynthesis, stellar evolution, astrobiology, and the origin of life.
 
 ---
 
 ## What It Does
 
-The simulation has two main parts:
-
-**1. Cosmic Timeline**
-Scrub through 13.8 billion years of cosmic history using a slider. Each position on the timeline corresponds to a stage in the universe's evolution, with a matching animated visual, a scientific description, and an AI-generated narrative.
-
-**2. Planetary System Generator**
-Once the timeline reaches planet formation, a randomized system of 8 planets is revealed. Each planet has computed physical properties. You can inspect any planet to see a cross-section diagram, its habitability score, and an AI description of its conditions. Earth is always included as a confirmed reference case.
+You pick a **journey type** (the kind of world you want to build), then make choices at **8 cosmic stages**. Each choice steers your world's evolution and affects its final habitability score. At the end, an AI (K2-Think-v2) names your world, writes its lore, describes its conditions, and generates a speculative story about what life — or the absence of it — might look like there.
 
 ---
 
-## Timeline Stages
+## Journey Types
 
-| Time (Gyr) | Stage | Visual |
-|---|---|---|
-| 0 – 0.001 | The Big Bang | Expanding fireball |
-| 0.001 – 0.2 | Big Bang Nucleosynthesis | Swirling plasma (H + He form) |
-| 0.2 – 0.5 | First Stars (Population III) | Bright star clusters |
-| 0.5 – 2.0 | Supernovae & Heavy Elements | Repeating shockwave explosion |
-| 2.0 – 8.0 | Galaxy Formation | Rotating spiral galaxy |
-| 8.0 – 9.3 | Solar Nebula Forms | Swirling gas and dust disk |
-| 9.3 – 9.8 | Planet Accretion | Rocky debris orbiting the sun |
-| 9.8 – 13.8 | Planetary Evolution | Full solar system, orbiting planets |
+| Journey | What You're Building |
+|---|---|
+| Rocky Planet | A dense, silicate world like Earth or Mars |
+| Gas Giant | A massive hydrogen/helium world like Jupiter |
+| Icy Moon | A frozen moon with a subsurface ocean like Europa |
+| Earth-like World | A blue world optimized for life |
+| Star System | An entire multi-planet system |
+
+---
+
+## The 8 Cosmic Stages
+
+| Stage | Concept Covered |
+|---|---|
+| 1. The Big Bang | Expansion of space, no center, uniform origin |
+| 2. Big Bang Nucleosynthesis | H and He formation, temperature-driven particle physics |
+| 3. First Stars (Pop III) | Metal-free stars, explosive deaths, first heavy elements |
+| 4. Supernovae & Heavy Elements | Carbon, oxygen, iron forged and scattered |
+| 5. Galaxy Formation | Dark matter scaffolding, disk vs. elliptical galaxies |
+| 6. Solar Nebula | Angular momentum, frost line, rocky vs. icy material |
+| 7. Planet Accretion | Runaway growth, differentiation, core formation |
+| 8. Planetary Evolution | Atmosphere, oceans, magnetic field, plate tectonics |
+
+At each stage you read a narrative written from the perspective of a particle or atom in your journey, see an animated canvas visualization, view the causal chain of events, and make a choice that affects your world's outcome.
 
 ---
 
@@ -37,65 +43,54 @@ Once the timeline reaches planet formation, a randomized system of 8 planets is 
 
 | Input | What It Does |
 |---|---|
-| **Timeline slider** (0–13.8 Gyr) | Selects which cosmic era to view |
-| **"Details" button** on any planet | Opens the planet's cross-section and AI narrative |
+| **Journey type** (home screen) | Sets the category of world you are building |
+| **Stage choices** (one per stage) | Steers physical properties — distance, composition, evolution path |
 
-There are no manual parameter controls — the planetary system is generated automatically using a fixed random seed (seed 42) so results are consistent between sessions.
-
----
-
-## How Planets Are Generated (`simulation.py`)
-
-Each planet is assigned properties based on its distance from its star and a random seed:
-
-| Property | How It's Determined |
-|---|---|
-| **Star type** | Randomly chosen: M, K, G, or F dwarf |
-| **Distance (AU)** | 8 slots spaced across 0.05–3.8 AU |
-| **Planet type** | Rocky / super-Earth in the inner disk; gas/ice giants further out |
-| **Atmosphere** | Random: none / thin / thick / greenhouse |
-| **Water** | Depends on whether the planet falls in the star's habitable zone |
-| **Surface temperature** | Calculated from stellar luminosity, distance, and atmospheric effect |
-| **Magnetic field** | Probabilistic; required for habitability |
-
-**Habitability score (0–100)** is computed from:
-- Temperature in the liquid-water range (–20°C to 65°C): +30
-- Water presence (liquid/abundant): up to +25
-- Atmosphere (thin/thick): up to +20
-- Magnetic field present: +15
-- Rocky planet type: +10
-
-A planet is flagged **"Possible Life"** only if it meets all of: correct temperature range, liquid water, non-null atmosphere, magnetic field, and rocky type.
-
-**Earth** is always placed at slot 4 with real properties (1.0 Earth mass, 1.0 AU, thick atmosphere, abundant water, 15°C) as the known baseline.
+The number of planets generated (for the Star System journey) depends on user choices at the accretion stage, not a fixed number.
 
 ---
 
-## Outputs
+## Outputs & Result Page
 
-| Output | Description |
+When all 8 stages are complete, the result page shows:
+
+| Section | Content |
 |---|---|
-| **Animated canvas** | Stage-specific visualization that changes as you move the timeline |
-| **Stage description** | Scientific explanation of what's happening at that point in history |
-| **Elements forged** | Which elements exist in the universe at this stage |
-| **AI narrative** | 2–3 sentence vivid description generated by K2-Think-v2 |
-| **Planet grid** | 8 planet cards showing type, habitability label, temperature, water |
-| **Cross-section SVG** | Diagram showing core → mantle → crust → surface → atmosphere layers |
-| **Habitability score bar** | 0–100 score with label (Uninhabitable / Marginal / Potentially Habitable / Possible Life / Life Confirmed) |
-| **Planet AI narrative** | K2-generated description of the planet's conditions and life prospects |
+| **World name + lore** | K2-generated unique name and 2–3 sentence origin story |
+| **Habitability label + score** | 0–100 score with label (Uninhabitable → Life Confirmed) |
+| **Cross-section SVG** | Layered diagram: core, mantle, crust, atmosphere |
+| **Properties** | Star type, distance, temperature, water, atmosphere, magnetic field |
+| **AI description** | K2 narrative of the world's conditions |
+| **Factor breakdown** | Bar chart of each habitability factor and its point contribution |
+| **Cosmic Story** | Speculative K2 scenario — what could happen on this world |
 
 ---
 
-## Course Connections
+## AI Usage
 
-| Simulation Element | Course Lecture |
+K2-Think-v2 is used **only on the result page** for three tasks:
+
+1. **World naming** — generates a unique planet name and 2-sentence lore
+2. **Result narrative** — describes the world's conditions
+3. **Cosmic Story** — speculative scenario based on the world's real properties
+
+Stage narrations (the "you are a hydrogen atom…" text at each stage) are pre-written static text, not AI-generated, to ensure instant load and scientific accuracy.
+
+---
+
+## Habitability Score
+
+Computed from the world's physical properties at the end of stage 8:
+
+| Factor | Max Points |
 |---|---|
-| Big Bang & nucleosynthesis (H/He formation) | Lecture 12: The Big Bang |
-| Heavy elements from supernovae (C, O, Fe) | Lecture 2: Everything is made of atoms |
-| Origin of life in warm oceans (self-replicating molecules) | Lectures 13–14: Origin of life |
-| Habitability conditions (water, temperature, atmosphere) | Lecture 7: Astrobiology |
-| Darwinian evolution on Earth | Lecture 23: Evolution by natural selection |
-| Entropy and the 2nd Law | Lecture 22: Entropy and Life |
+| Temperature in liquid-water range | +30 |
+| Liquid or abundant water | +25 |
+| Atmosphere (thin or thick) | +20 |
+| Magnetic field present | +15 |
+| Rocky planet type | +10 |
+
+A world reaches **"Life Confirmed"** only if it meets all criteria simultaneously.
 
 ---
 
@@ -126,8 +121,10 @@ The app opens at `http://localhost:8501`.
 
 ```
 gened_proj/
-├── app.py           # Streamlit UI, canvas animation, cross-section SVG, K2 API calls
-├── simulation.py    # Cosmic stages, Planet dataclass, planet generation logic
-├── requirements.txt # Python dependencies
-└── .env.local       # API key (not committed)
+├── app.py          # Streamlit UI, routing, result page, canvas injection
+├── ai.py           # K2-Think-v2 API calls with BEGIN: extraction strategy
+├── simulation.py   # World dataclass, habitability scoring, build_world()
+├── story.py        # Stage definitions, pre-written narratives, journey configs
+├── visuals.py      # HTML5 canvas animations and SVG cross-section diagrams
+└── .env.local      # API key (not committed)
 ```

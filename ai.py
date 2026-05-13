@@ -59,40 +59,76 @@ _STUDY_GUIDE_FALLBACK = (
 
 # ── Core helper ───────────────────────────────────────────────────────────────
 
-# Sentences that look like K2 meta-commentary — strip from front of any output
+# Sentences that look like K2 meta-commentary — stripped from front AND back
 _REASONING_SENT = re.compile(
-    r'^(\[.*?\]\.?'                          # [Paragraph], [Note], etc.
-    r"|i'll\s"                               # I'll output / I'll write
-    r'|i will\s|i can\s|i need\s'
-    r'|ok\.?\s|okay\.?\s|sure\.?\s'         # Ok, Okay, Sure
-    r'|check:\s|note:\s|step\s\d'           # Check:, Note:, Step 1
-    r'|make sure\s|print\s|no extra\s'
-    r'|output must\s|just output\s|just write\s'
-    r'|produce final\s|now,?\s(?:let|i|we)\s'
+    r'^(\[.*?\]\.?'                               # [Paragraph], [Note], etc.
+    r"|i'll\s|i will\s|i can\s|i need\s"
+    r'|will\s(?:do|respond|output|write|now|produce)'
+    r'|ok\.?\s|okay\.?\s|sure[,.]'
+    r'|good[,.]|then\s(?:paragraph|line|the\s)'
+    r'|yes,?\s|thus\s|use\s(?:adjective|vivid|concrete)'
+    r'|check[:\s]|double.?check\b|note:\s|step\s\d'
+    r'|count:\s|that\'s\s(?:one|two|three|four|five|six)\.'
+    r'|sentence\s\d+\s+ends|sentence\s\d+\s+should'
+    r'|let\'s\s(?:write|examine|check|count|verify)'
+    r'|line\s\d+[:\s]|formatting:|potential\sissue'
+    r'|make sure\s|no extra\s|output must\s'
+    r'|just output\s|just write\s|produce final\s'
+    r'|now,?\s(?:let|i|we)\s|now\s+let\'s\s'
     r'|the (?:output|name|paragraph|lore|response|format)\s'
     r'|we (?:need|must|should|will|have)\s)',
     re.IGNORECASE
 )
 
+# Patterns that mark where K2 starts self-verification after writing the answer
+_VERIFICATION_START = re.compile(
+    r'\b(?:count:|that\'s\s(?:one|two|three|four|five)\.|'
+    r'sentence\s*\d+\s+ends\s+after|sentence\s*\d+\s+should|'
+    r'let\'s\s+(?:examine|check|count|verify)|now\s+let\'s\s+(?:examine|check)|'
+    r'check\s+formatting:|check:\s+sentence|'
+    r'(?:line|paragraph)\s+\d+\s+(?:is|should|ends|has))',
+    re.IGNORECASE
+)
+
 
 def _strip_reasoning(text: str) -> str:
-    """Remove leading reasoning / meta-commentary sentences from a text block."""
+    """
+    Remove leading AND trailing reasoning sentences.
+    Also truncates at the point K2 starts self-verifying its own output.
+    """
+    # Hard truncate at verification comments ("Count:", "Sentence1 ends after...")
+    vm = _VERIFICATION_START.search(text)
+    if vm:
+        text = text[:vm.start()].strip().rstrip('"').rstrip("'")
+
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
     while sentences and _REASONING_SENT.match(sentences[0].strip()):
         sentences.pop(0)
+    while sentences and _REASONING_SENT.match(sentences[-1].strip()):
+        sentences.pop()
     return " ".join(sentences).strip()
+
+
+def _complete_sentences(text: str, max_chars: int = 1500) -> str:
+    """Return the longest complete-sentence prefix within max_chars.
+    Never cuts mid-sentence — always ends at a period/!/? boundary."""
+    if len(text) <= max_chars:
+        return text
+    # Find all sentence-end positions within (or just past) max_chars
+    for m in reversed(list(re.finditer(r'(?<=[.!?])\s', text[:max_chars + 120]))):
+        if m.start() <= max_chars:
+            return text[:m.start()].strip()
+    return text[:max_chars]  # last resort
 
 
 def _extract(text: str) -> str:
     """
     Extract the final answer from K2-Think-v2 output.
 
-    K2 reasons extensively then delivers the answer. Two observed patterns:
-    1. K2 says "Now deliver:" / "Here is the answer:" → content follows on next line
-    2. K2 writes reasoning paragraphs then a clean final paragraph = the answer
-
-    We try both strategies in order and take the first that yields real content.
-    All returned text is cleaned of leading reasoning sentences.
+    Strategy: prompts end with 'BEGIN:' so K2 writes its reasoning,
+    then signals the start of the actual answer with BEGIN:.
+    We take the text after the LAST occurrence of BEGIN:.
+    Falls back to paragraph/sentence heuristics if BEGIN: is absent.
     """
     # Strip explicit <think> blocks if present
     text = re.sub(
@@ -100,60 +136,51 @@ def _extract(text: str) -> str:
         "", text, flags=re.DOTALL | re.IGNORECASE,
     ).strip()
 
-    # Strategy 1: find the LAST transition phrase K2 uses before delivering content
-    transitions = list(re.finditer(
-        r'(?:now\s+(?:deliver|write|here|provide|for\s+the)\b'
-        r'|here\s+is\s+(?:the|my|a)\s+\w+'
-        r'|final\s+(?:answer|response|narration|narrative|output)\s*[:.!-]'
-        r'|(?:thus|therefore|so)[,\s]+(?:the\s+)?(?:answer|narration|response)\s*[:.!]'
-        r'|(?:the|my)\s+(?:answer|response|narration|narrative|result)\s*[:.!]'
-        r'|writing\s+(?:the|my)\s+(?:answer|narration|narrative))',
-        text, re.IGNORECASE
-    ))
-    if transitions:
-        last_t = transitions[-1]
-        nl = text.find('\n', last_t.end())
-        after = text[nl if nl != -1 else last_t.end():].strip()
-        if len(after) > 40:
-            return _strip_reasoning(after)[:800]
+    # Strategy 1: BEGIN: marker — take text after the LAST occurrence
+    if "BEGIN:" in text:
+        after = text.rsplit("BEGIN:", 1)[-1].strip().lstrip('\n').strip()
+        if len(after) > 30:
+            return _complete_sentences(_strip_reasoning(after))
 
-    # Strategy 2: last paragraph (answer comes last)
+    # Strategy 2: last paragraph (K2 answers at the end)
     paragraphs = [p.strip() for p in re.split(r'\n{2,}', text) if p.strip()]
     if len(paragraphs) >= 2:
         last = paragraphs[-1]
         if len(last) < 60:
             last = paragraphs[-2] + " " + last
-        return _strip_reasoning(last)[:800]
+        return _complete_sentences(_strip_reasoning(last))
 
-    # Strategy 3: last 5 sentences with reasoning stripped
+    # Strategy 3: last 5 sentences
     sentences = re.split(r'(?<=[.!?])\s+', text)
     candidate = " ".join(sentences[-5:]).strip()
-    return _strip_reasoning(candidate)[:700] or text[:500]
+    return _complete_sentences(_strip_reasoning(candidate)) or text[:800]
 
 
 def _call(prompt: str, max_tokens: int = 4000) -> str:
     """
     Call K2 and extract the final answer.
-    K2-Think-v2 always reasons before answering — high max_tokens gives it room
-    to finish reasoning AND write the actual response.
-    Instructions telling K2 'don't reason' are counterproductive: the model
-    just reasons about the instruction and burns extra tokens doing so.
+    K2-Think-v2 always reasons before answering.  We append a BEGIN: instruction
+    so K2 signals exactly where its final answer starts — we crop everything before it.
     """
+    marked = prompt + "\n\nWhen finished thinking, write BEGIN: on its own line, then write only the final answer."
     resp = _client.chat.completions.create(
         model=_MODEL,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{"role": "user", "content": marked}],
         max_tokens=max_tokens,
     )
     raw = resp.choices[0].message.content or ""
     result = _extract(raw)
     # If the extracted text looks like mid-reasoning, signal failure so callers use fallback
     _reasoning_start = re.compile(
-        r'^(so\b|well\b|but\b|the user\b|we must\b|we need\b|we should\b|'
-        r'i need\b|i will\b|i think\b|i believe\b|let me\b|okay\b|alright\b|'
-        r'now,\b|first,\b|to write\b|make sure\b|this asks\b|the prompt\b|'
-        r'it says\b|the instruction\b|probably\b|maybe\b|perhaps\b|'
-        r'looking at\b|considering\b|note that\b|also,\b|however,\b|'
-        r'since\b|given\b|based on\b|according to\b|as per\b)',
+        r'^(so\b|well\b|but\b|yes\b|good\b|sure\b|'
+        r'will do\b|will respond\b|will write\b|will output\b|'
+        r'the user\b|we must\b|we need\b|we should\b|'
+        r'i need\b|i will\b|i\'ll\b|i think\b|i believe\b|let me\b|'
+        r'okay\b|alright\b|now,\b|first,\b|to write\b|make sure\b|'
+        r'this asks\b|the prompt\b|it says\b|the instruction\b|'
+        r'probably\b|maybe\b|perhaps\b|looking at\b|considering\b|'
+        r'note that\b|also,\b|however,\b|since\b|given\b|'
+        r'based on\b|according to\b|as per\b|check:\b|double.?check\b)',
         re.IGNORECASE
     )
     if _reasoning_start.match(result.strip()):
@@ -286,10 +313,10 @@ def generate_world_identity(journey: str, world_summary: str, hab_label: str) ->
         return _defaults.get(journey, ("Unknown World", _STUDY_GUIDE_FALLBACK))
     try:
         prompt = (
-            f"Write a name and origin paragraph for a {journey} world.\n"
-            f"Line 1: planet name (1-3 words, scientific and evocative)\n"
-            f"Line 2: one vivid paragraph describing how it formed and what it is like today.\n\n"
-            f"{world_summary}\nHabitability: {hab_label}"
+            f"Invent a name (1-3 evocative scientific words) and one vivid origin paragraph "
+            f"for this {journey} world based on its properties.\n\n"
+            f"{world_summary}\nHabitability: {hab_label}\n\n"
+            f"Reply with the name on the first line and the paragraph on the next line."
         )
         text = _call(prompt, max_tokens=3500)
         lines = [l.strip() for l in text.strip().splitlines() if l.strip()]
