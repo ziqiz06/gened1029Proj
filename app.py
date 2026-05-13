@@ -597,7 +597,7 @@ def show_result():
     # ── Cosmic Story ──────────────────────────────────────────────────────────
     st.divider()
     st.markdown("### 🌌 Cosmic Story")
-    st.caption("K2 imagines a speculative scenario rooted in your world's real properties.")
+    st.caption("K2 tells a story about your world.")
     with st.spinner("K2 is imagining…"):
         story = cosmic_speculation(journey, summary, world.hab_label,
                                    st.session_state.speculation_seed)

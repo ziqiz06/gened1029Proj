@@ -211,36 +211,41 @@ def stage_narrative(stage_key: str, stage_desc: str,
 
 _SPECULATION_FALLBACK = {
     "rocky": (
-        "On the third moon of your star's fourth planet, something unexpected is happening. "
-        "Sheltered by a thick radiation belt and warmed by tidal flexing, a shallow ocean of "
-        "brine has persisted for two billion years — long enough for chemistry to grow complicated. "
-        "No one has looked yet, but the spectral signature of methane in that moon's thin haze "
-        "does not have an obvious geological explanation."
+        "The wind never stops on this world. It moves in slow, patient circles across cracked orange rock, "
+        "carrying dust that has been carried before, ten thousand times. At the edge of a canyon so wide "
+        "you cannot see the other side, something dark stains the stone — a streak of wet minerals "
+        "that appears every morning and vanishes by noon, as if the cliff itself is breathing. "
+        "Nothing lives here. But something keeps leaving marks."
     ),
     "gas_giant": (
-        "Your gas giant's largest moon sits just inside the magnetic bubble that shields it from "
-        "stellar radiation. Beneath its cracked ice shell, a salt ocean stretches 80 km deep — "
-        "and near the hydrothermal vents on the seafloor, heat and minerals flow steadily upward. "
-        "The chemical gradients there are eerily similar to the conditions where life first stirred on Earth."
+        "Far below the highest cloud bands, where no sunlight has ever reached, the pressure is "
+        "so immense that hydrogen stops being a gas and starts being something else entirely — "
+        "a liquid metal that conducts electricity like copper and glows faintly from within. "
+        "The storms that rage at the top of the atmosphere are old. The largest one has been "
+        "spinning for longer than life has existed on Earth. No one knows what lives at the bottom "
+        "of this world. No probe could survive the descent to find out."
     ),
     "icy_moon": (
-        "Every 42 hours, your icy moon completes one orbit, flexing and cracking its frozen shell "
-        "as it goes. The tidal stress carves fresh channels in the ice, and along those channels "
-        "organic molecules — carried up from the subsurface ocean — are exposed to faint starlight. "
-        "Whether any of those molecules have crossed the threshold into self-replication is a question "
-        "a future probe might answer."
+        "Every few hours, a crack opens in the ice near the equator, and a plume of warm water "
+        "shoots into space — rising fifty kilometres before freezing into crystals and drifting "
+        "back down as snow. Inside the plume, if you could hover there, you would smell something "
+        "faintly chemical, like rust and ocean mixed together. Scientists argue about what it means. "
+        "The plume keeps erupting, patient and regular, like a heartbeat."
     ),
     "earth_like": (
-        "A parallel history: if your world's early impactor had arrived ten million years later, "
-        "the axial tilt would have been 42° instead of 23°. Seasonal swings of 80°C would have "
-        "kept the tropics scorching and the poles frozen solid for half the year. Life might still "
-        "have emerged in the deep ocean — but the land would have remained barren for far longer."
+        "On the night side, just before the terminator sweeps back into day, the temperature drops "
+        "fast enough to freeze dew on every surface within an hour. In those quiet minutes, the "
+        "world is still. Then the star crests the horizon and everything thaws at once — water "
+        "running in thin films over rock, pooling in footprint-shaped hollows, evaporating before "
+        "noon. If you stood there long enough, you would start to feel like the world was breathing."
     ),
     "star_system": (
-        "The fourth planet in your system sits just outside the habitable zone — cold, dry, and "
-        "thin-aired. But three billion years ago it was warmer, and there are ancient river valleys "
-        "preserved under the dust. Whether the microbes that may have thrived there survived "
-        "underground, sheltered from radiation by a metre of rock, is still an open question."
+        "The second planet is too hot. The fourth is too cold. But the third has had liquid water "
+        "on its surface for six hundred million years, and in that time the ocean has learned "
+        "a few tricks. From orbit it looks blue and white, ordinary, unremarkable. "
+        "Up close, at the shoreline where the waves drag and release, "
+        "something in the foam catches the light differently than water should. "
+        "The third planet is still deciding what it wants to become."
     ),
 }
 
@@ -249,26 +254,28 @@ _SPECULATION_FALLBACK = {
 def cosmic_speculation(journey: str, world_summary: str, hab_label: str,
                        _seed: int = 0) -> str:
     """
-    K2 invents one creative speculative scenario rooted in the world's actual properties.
-    _seed is a cache-buster so clicking 'Generate Another' produces a fresh scenario.
+    K2 writes a short creative story about the world — what it feels like to be there.
+    _seed is a cache-buster so clicking 'Generate Another' produces a fresh story.
     """
     if not _API_AVAILABLE:
         return _SPECULATION_FALLBACK.get(journey, _SPECULATION_FALLBACK["earth_like"])
-    _seed_hints = [
-        "focus on a hidden moon with unexpected chemistry",
-        "explore an impact event that changed everything",
-        "imagine how life might have started in an unlikely place",
-        "describe how the star's evolution will reshape this world in 2 billion years",
-        "invent a civilisation that might have risen and why it vanished",
-        "trace one specific element — iron, phosphorus, or carbon — through cosmic history to here",
-        "describe an orbital resonance or tidal effect that has surprising consequences",
-        "speculate on what an alien probe would first detect from 10 light-years away",
+    _story_angles = [
+        "describe what a single day feels like on this world — the light, the air, the sounds",
+        "tell the story of one small thing that happens on this world: a wave, a storm, a crack in the ice",
+        "write from the perspective of the first visitor to set foot here — what they see and smell and hear",
+        "describe what this world looks like from its own sky at night",
+        "tell what happens to this world in the far future — in a billion years",
+        "describe the strangest thing about this world that a visitor would notice first",
+        "write about this world as if it were alive — patient, ancient, and indifferent to visitors",
+        "tell the story of one object — a rock, a wave, a cloud — and trace where it has been",
     ]
-    angle = _seed_hints[_seed % len(_seed_hints)]
+    angle = _story_angles[_seed % len(_story_angles)]
     try:
         prompt = (
-            f"Write exactly 3 vivid sentences: a speculative scenario for this world.\n"
-            f"Angle: {angle}. Reference actual property values.\n\n"
+            f"Write a short creative story (3–5 sentences) set on this world.\n"
+            f"Angle: {angle}.\n"
+            f"Write like a novelist, not a scientist. No numbers, no scientific terms. "
+            f"Make it vivid, atmospheric, and surprising. Use the world's real properties to inspire the mood and details.\n\n"
             f"{world_summary}\nHabitability: {hab_label}"
         )
         result = _call(prompt, max_tokens=4000)
