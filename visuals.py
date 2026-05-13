@@ -734,42 +734,63 @@ def _icy_moon_svg(w: World) -> str:
 
 
 def _star_system_svg(w: World) -> str:
-    """Simple blocky orbital diagram for a star system journey."""
+    """Centered orbital diagram — star in the middle, all planets fit within SVG."""
     from simulation import HABITABLE_ZONES
     hz_in, hz_out = HABITABLE_ZONES.get(w.star_type, (0.7, 1.5))
 
-    star_colors = {"M": "#ff7755", "K": "#ffaa55", "G": "#ffdd55", "F": "#ffffaa"}
-    star_col = star_colors.get(w.star_type, "#ffdd55")
+    star_colors  = {"M": "#ff7755", "K": "#ffaa55", "G": "#ffdd55", "F": "#ffffee"}
+    star_col     = star_colors.get(w.star_type, "#ffdd55")
+    star_radii   = {"M": 10, "K": 13, "G": 16, "F": 19}
+    star_r       = star_radii.get(w.star_type, 16)
 
-    def au_to_px(au):
-        return int(au * 28)
+    def au_to_px(au: float) -> int:
+        # sqrt-compressed: ~0.3 AU→28px, 8 AU→122px — all fit inside 280px SVG
+        return max(28, min(122, int(28 + 94 * ((max(au, 0.3) - 0.3) / 7.7) ** 0.5)))
 
-    hz_in_px = au_to_px(hz_in)
+    hz_in_px  = au_to_px(hz_in)
     hz_out_px = au_to_px(hz_out)
 
     orbits_au = [0.4, 0.7, 1.0, 1.5, 2.2, 3.5, 5.2, 8.0]
-    planet_rows = ""
-    for i, au in enumerate(orbits_au[:w.num_planets]):
-        r = au_to_px(au)
-        in_hz_zone = hz_in <= au <= hz_out
-        dot_col = "#4fa3ff" if in_hz_zone else "#9a6a3a"
-        planet_rows += (
-            f'<circle cx="140" cy="200" r="{r}" fill="none" stroke="rgba(185,210,240,0.16)" stroke-width="2" stroke-dasharray="5 8"/>'
-            f'<rect x="{140 + r - 4}" y="196" width="8" height="8" fill="{dot_col}"/>'
+    orbit_svg = ""
+    planet_svg = ""
+    for i, au in enumerate(orbits_au[: w.num_planets]):
+        r         = au_to_px(au)
+        in_hz     = hz_in <= au <= hz_out
+        is_giant  = au > 2.0
+        dot_col   = "#4fa3ff" if in_hz else ("#c87040" if is_giant else "#aa7a4a")
+        dot_r     = 6 if is_giant else 4
+        # stagger planet positions around orbits so they're all visible
+        angle     = math.radians(22 + i * 51)
+        px        = 140 + math.cos(angle) * r
+        py        = 140 + math.sin(angle) * r
+        orbit_svg  += (
+            f'<circle cx="140" cy="140" r="{r}" fill="none" '
+            f'stroke="rgba(185,210,240,0.20)" stroke-width="1.5" stroke-dasharray="4 6"/>'
+        )
+        planet_svg += (
+            f'<rect x="{px - dot_r:.0f}" y="{py - dot_r:.0f}" '
+            f'width="{dot_r * 2}" height="{dot_r * 2}" fill="{dot_col}"/>'
         )
 
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="280" height="280"
      style="background:#07101f;border-radius:10px;display:block;margin:auto;image-rendering:pixelated;">
   {_svg_header()}
-  <circle cx="140" cy="200" r="{hz_out_px}" fill="#4ecf58" opacity="0.11"/>
-  <circle cx="140" cy="200" r="{hz_in_px}" fill="#07101f"/>
-  {planet_rows}
+  <!-- habitable zone annulus -->
+  <circle cx="140" cy="140" r="{hz_out_px}" fill="#4ecf58" opacity="0.14"/>
+  <circle cx="140" cy="140" r="{hz_in_px}"  fill="#07101f"/>
+  <!-- orbit rings -->
+  {orbit_svg}
+  <!-- planets -->
+  {planet_svg}
+  <!-- star -->
   <g filter="url(#shadow)">
-    <rect x="126" y="186" width="28" height="28" fill="{star_col}"/>
-    <rect x="132" y="192" width="12" height="12" fill="#ffffff" opacity="0.35"/>
+    <circle cx="140" cy="140" r="{star_r + 10}" fill="{star_col}" opacity="0.22"/>
+    <circle cx="140" cy="140" r="{star_r + 5}"  fill="{star_col}" opacity="0.30"/>
+    <rect x="{140 - star_r}" y="{140 - star_r}" width="{star_r * 2}" height="{star_r * 2}" fill="{star_col}"/>
+    <rect x="{140 - star_r // 2}" y="{140 - star_r // 2}" width="{star_r}" height="{star_r}" fill="#ffffff" opacity="0.30"/>
   </g>
-  <text x="140" y="18" text-anchor="middle" fill="#9ce89c" font-size="9" font-family="monospace">GREEN RING = HABITABLE ZONE</text>
-  <text x="140" y="273" text-anchor="middle" fill="#8190a6" font-size="9" font-family="monospace">{w.display_name} · {w.num_planets} PLANETS</text>
+  <text x="140" y="14" text-anchor="middle" fill="#9ce89c" font-size="8" font-family="monospace">GREEN RING = HABITABLE ZONE</text>
+  <text x="140" y="273" text-anchor="middle" fill="#8190a6" font-size="8" font-family="monospace">{w.display_name} · {w.num_planets} PLANETS</text>
 </svg>"""
 
 
