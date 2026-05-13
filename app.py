@@ -42,7 +42,8 @@ def _inject_css():
 header[data-testid="stHeader"],[data-testid="stToolbar"],
 [data-testid="stDecoration"],.stDeployButton{display:none!important}
 /* Always show the sidebar collapse/expand toggle */
-[data-testid="stSidebarCollapsedControl"]{display:flex!important}
+[data-testid="stSidebarCollapsedControl"]{display:flex!important;background:#444!important;border-radius:0 4px 4px 0!important;padding:4px!important}
+[data-testid="stSidebarCollapsedControl"] button{color:#fff!important;background:#555!important}
 
 html,body,[class*="css"]{font-family:'VT323',monospace!important;font-size:14px!important;color:#f0f0f0!important}
 .stApp{background-color:#1b1b1b!important}
